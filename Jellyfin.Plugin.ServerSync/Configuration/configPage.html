@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Server Sync</title>
+</head>
+<body>
+    <div id="ServerSyncConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <div class="verticalSection verticalSection-extrabottompadding">
+                    <div class="sectionTitleContainer flex align-items-center">
+                        <h2 class="sectionTitle">Server Sync Settings:</h2>
+                    </div>
+                    <form id="ServerSyncConfigForm">
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="txtAuthToken" label="Authentication Token" />
+                            <div class="fieldDescription">The authentication token. Must be the same on all synchronized instances. It is highly recommended to use additional layers of authentication.</div>
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="txtRemoteServerURL" label="Remote Server URL" />
+                            <div class="fieldDescription">The URL to the other (remote) server that should be synchronized. Currently only one remote server is supported.</div>
+                        </div>
+                        <div>
+                            <button is="emby-button" type="submit" data-theme="b" class="raised button-submit block">
+                                <span>${Save}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <script type="text/javascript">
+            var TemplateConfig = {
+                pluginUniqueId: '4f0f0026-08b2-4794-a6d2-534cee5b8120'
+            };
+
+            document.querySelector('#ServerSyncConfigPage')
+                .addEventListener('pageshow', function () {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
+                        document.querySelector('#txtAuthToken').value = config.AuthToken;
+                        document.querySelector('#txtRemoteServerURL').value = config.RemoteServerURL;
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+
+            document.querySelector('#ServerSyncConfigForm')
+                .addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
+                        config.AuthToken = document.querySelector('#txtAuthToken').value;
+                        config.RemoteServerURL = document.querySelector('#txtRemoteServerURL').value;
+                        ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
+                    });
+
+                    return false;
+                });
+        </script>
+    </div>
+</body>
+</html>
