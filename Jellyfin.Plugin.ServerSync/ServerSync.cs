@@ -36,32 +36,39 @@ namespace Jellyfin.Plugin.ServerSync
 
         private void UserDataSaved(object sender, UserDataSaveEventArgs e)
         {
-            // Skip non standard reasons, avoid loops when sending this event to remote
-            // Skip any invalid events or unconfigured setups
-            if (e.SaveReason == UserDataSaveReason.Import || e.Item == null || e.Item.Id == Guid.Empty || string.IsNullOrEmpty(Plugin.Instance.Configuration.RemoteServerURL))
+            try
             {
-                return;
-            }
+                // Skip non standard reasons, avoid loops when sending this event to remote
+                // Skip any invalid events or unconfigured setups
+                if (e.SaveReason == UserDataSaveReason.Import || e.Item == null || e.Item.Id == Guid.Empty || string.IsNullOrEmpty(Plugin.Instance.Configuration.RemoteServerURL))
+                {
+                    return;
+                }
 
-            User user = _userManager.GetUserById(e.UserId);
-            if (user == null)
+                User user = _userManager.GetUserById(e.UserId);
+                if (user == null)
+                {
+                    _logger.LogWarning("UserDataSaved event triggered with unknown user");
+                    return;
+                }
+
+                UserItemDataDto dto = _userDataRepository.GetUserDataDto(e.Item, user);
+                // Not set automatically
+                dto.ItemId = e.Item.Id.ToString();
+
+                Uri baseUri = new Uri(Plugin.Instance.Configuration.RemoteServerURL);
+                Uri uri = new Uri(baseUri, "/internal/sync/update?userId=" + HttpUtility.UrlEncode(e.UserId.ToString()));
+                HttpRequestMessage request = new HttpRequestMessage();
+                request.Method = HttpMethod.Post;
+                request.RequestUri = uri;
+                request.Headers.Add("X-Internal-Sync-Auth", Plugin.Instance.Configuration.AuthToken);
+                request.Content = JsonContent.Create(dto);
+                client.SendAsync(request);
+            }
+            catch (Exception ex)
             {
-                _logger.LogWarning("UserDataSaved event triggered with unknown user");
-                return;
+                _logger.LogWarning("Error while attempting to sync user data: " + ex.ToString());
             }
-
-            UserItemDataDto dto = _userDataRepository.GetUserDataDto(e.Item, user);
-            // Not set automatically
-            dto.ItemId = e.Item.Id.ToString();
-
-            Uri baseUri = new Uri(Plugin.Instance.Configuration.RemoteServerURL);
-            Uri uri = new Uri(baseUri, "/internal/sync/update?userId=" + HttpUtility.UrlEncode(e.UserId.ToString()));
-            HttpRequestMessage request = new HttpRequestMessage();
-            request.Method = HttpMethod.Post;
-            request.RequestUri = uri;
-            request.Headers.Add("X-Internal-Sync-Auth", Plugin.Instance.Configuration.AuthToken);
-            request.Content = JsonContent.Create(dto);
-            client.SendAsync(request);
         }
 
         public void Dispose()
