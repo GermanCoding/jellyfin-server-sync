@@ -2,6 +2,8 @@
 
 ### Warning: Alpha stage. This project is currently in alpha phase of development. Things are not stable yet.
 
+## Warning: This plugin does not work with official versions of Jellyfin, due to limitations in Jellyfin's code. Instead it requires a custom build of Jellyfin adjusted for my needs that can be found here: https://github.com/GermanCoding/jellyfin
+
 ## Description
 
 This is a plugin for Jellyfin that synchronizes user data between two jellyfin instances. The idea is that if you watch a movie on server A, it's also marked as seen on server B.
@@ -31,11 +33,15 @@ As of now, only basic user item data is synchronized, including:
 - Play count
 - Played (Yes/No)
 - Rating
+- User Creation (Requires custom Jellyfin builds)
+- User Deletion
 
 
 ## Building and installing
 
 I'm not providing official builds, mostly because this project is still at an early stage.
 
-If you want to try it out, build the plugin yourself using Visual Studio (use the included .sln file), build the project, and copy the resulting output .dll
+Note that this plugin does *not* work with official versions of Jellyfin, due to limitations in Jellyfin's code. Instead it requires a custom build of Jellyfin adjusted for my needs that can be found here: https://github.com/GermanCoding/jellyfin
+
+If you want to try it out, build the plugin yourself using Visual Studio (use the included .sln file), override the default nuget Jellyfin .dll's with my custom ones, and copy the resulting output .dll
 into a subfolder (e.g ServerSync) in your Jellyfin plugins folder. Then restart jellyfin. The .meta file in that folder is generated automatically on first run.

@@ -1,8 +1,11 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Threading;
+using System.Threading.Tasks;
+using Jellyfin.Data.Entities;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Session;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
 using Microsoft.AspNetCore.Http;
@@ -20,13 +23,35 @@ namespace Jellyfin.Plugin.ServerSync
         private readonly IUserDataManager _userDataRepository;
         private readonly IUserManager _userManager;
         private readonly ILibraryManager _libraryManager;
+        private readonly ISessionManager _sessionManager;
 
-        public SyncController(ILogger<SyncController> logger, IUserDataManager userDataRepository, IUserManager userManager, ILibraryManager libraryManager)
+        public SyncController(ILogger<SyncController> logger, IUserDataManager userDataRepository, IUserManager userManager, ILibraryManager libraryManager, ISessionManager sessionManager)
         {
             _logger = logger;
             _userDataRepository = userDataRepository;
             _userManager = userManager;
             _libraryManager = libraryManager;
+            _sessionManager = sessionManager;
+        }
+
+        private Boolean CheckAuth()
+        {
+            if (!HttpContext.Request.Headers.TryGetValue("X-Internal-Sync-Auth", out StringValues auth))
+            {
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(auth.ToString()))
+            {
+                return false;
+            }
+
+            if (!string.Equals(auth, Plugin.Instance.Configuration.AuthToken, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         [HttpPost("update")]
@@ -34,16 +59,7 @@ namespace Jellyfin.Plugin.ServerSync
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public ActionResult Update([FromQuery, Required] Guid userId, [FromBody, Required] UserItemDataDto data)
         {
-            if (!HttpContext.Request.Headers.TryGetValue("X-Internal-Sync-Auth", out StringValues auth))
-            {
-                return Forbid();
-            }
-            if (string.IsNullOrEmpty(auth.ToString()))
-            {
-                return Forbid();
-            }
-
-            if (!string.Equals(auth, Plugin.Instance.Configuration.AuthToken, StringComparison.Ordinal))
+            if (!CheckAuth())
             {
                 return Forbid();
             }
@@ -76,6 +92,36 @@ namespace Jellyfin.Plugin.ServerSync
             itemData.Rating = data.Rating;
 
             _userDataRepository.SaveUserData(userId, item, itemData, UserDataSaveReason.Import, CancellationToken.None);
+
+            return NoContent();
+        }
+
+        [HttpPost("createUser")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public ActionResult CreateUser([FromBody, Required] UserDto data)
+        {
+            if (!CheckAuth())
+            {
+                return Forbid();
+            }
+
+            ServerSync.Instance.SyncUserCreation(data);
+
+            return NoContent();
+        }
+
+        [HttpPost("deleteUser")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public ActionResult DeleteUser([FromBody, Required] Guid userId)
+        {
+            if (!CheckAuth())
+            {
+                return Forbid();
+            }
+
+            ServerSync.Instance.SyncUserDeletion(userId);
 
             return NoContent();
         }
