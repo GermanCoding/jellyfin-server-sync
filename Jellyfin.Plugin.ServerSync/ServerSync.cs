@@ -70,7 +70,6 @@ namespace Jellyfin.Plugin.ServerSync
                 // Ugly hack
                 Thread.Sleep(5000);
                 UserDto dto = _userManager.GetUserDto(user);
-                _logger.LogInformation("Syncing user creation with provider " + dto.Policy.AuthenticationProviderId);
                 Uri uri = new Uri(_baseUri, "/internal/sync/createUser");
                 SendRequest(uri, JsonContent.Create(dto));
             }).Start();
@@ -129,7 +128,7 @@ namespace Jellyfin.Plugin.ServerSync
             _deletedUsers.Add(userId);
             // Do the same as what UserController does on deletion
             _sessionManager.RevokeUserTokens(userId, null);
-            _userManager.DeleteUser(userId);
+            _userManager.DeleteUserAsync(userId);
         }
 
         public async void SyncUserCreation(UserDto data)
