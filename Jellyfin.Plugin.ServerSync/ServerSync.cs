@@ -9,15 +9,15 @@ using Jellyfin.Data.Entities;
 using Jellyfin.Data.Events;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Library;
-using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Controller.Session;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.ServerSync
 {
-    public class ServerSync : IServerEntryPoint
+    public class ServerSync : IHostedService
     {
         public static ServerSync Instance { get; set; }
 
@@ -31,7 +31,6 @@ namespace Jellyfin.Plugin.ServerSync
         private readonly Uri _baseUri;
         private readonly List<string> _createdUsersByName;
         private readonly List<Guid> _deletedUsers;
-        private ReflectionHelper ReflectionHelper { get; set; }
 
         public ServerSync(IUserManager userManager, ILogger<ServerSync> logger, IUserDataManager userDataRepository, IServerApplicationHost appHost, ISessionManager sessionManager)
         {
@@ -41,18 +40,9 @@ namespace Jellyfin.Plugin.ServerSync
             _userDataRepository = userDataRepository;
             _appHost = appHost;
             _sessionManager = sessionManager;
-            ReflectionHelper = new ReflectionHelper();
             _baseUri = new Uri(Plugin.Instance.Configuration.RemoteServerURL);
             _deletedUsers = new List<Guid>();
             _createdUsersByName = new List<string>();
-        }
-
-        public Task RunAsync()
-        {
-            _userManager.OnUserUpdated += UserConfigUdated;
-            _userDataRepository.UserDataSaved += UserDataSaved;
-            _client.DefaultRequestHeaders.Add("User-Agent", "Jellyfin ServerSync");
-            return Task.CompletedTask;
         }
 
         public void OnUserCreated(User user)
@@ -155,9 +145,20 @@ namespace Jellyfin.Plugin.ServerSync
             _client.SendAsync(request).ConfigureAwait(false);
         }
 
-        public void Dispose()
+        public Task StartAsync(CancellationToken cancellationToken)
         {
-            GC.SuppressFinalize(this);
+            _userManager.OnUserUpdated += UserConfigUdated;
+            _userDataRepository.UserDataSaved += UserDataSaved;
+            _client.DefaultRequestHeaders.Add("User-Agent", "Jellyfin ServerSync");
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            _userManager.OnUserUpdated -= UserConfigUdated;
+            _userDataRepository.UserDataSaved -= UserDataSaved;
+            _client.DefaultRequestHeaders.Remove("User-Agent");
+            return Task.CompletedTask;
         }
     }
 }
