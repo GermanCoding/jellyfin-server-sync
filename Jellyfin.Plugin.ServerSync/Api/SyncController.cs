@@ -72,7 +72,7 @@ namespace Jellyfin.Plugin.ServerSync
                 return NoContent();
             }
 
-            var item = _libraryManager.GetItemById(Guid.Parse(data.ItemId));
+            var item = _libraryManager.GetItemById(data.ItemId);
 
             if (item == null)
             {
@@ -91,7 +91,7 @@ namespace Jellyfin.Plugin.ServerSync
             itemData.Played = data.Played;
             itemData.Rating = data.Rating;
 
-            _userDataRepository.SaveUserData(userId, item, itemData, UserDataSaveReason.Import, CancellationToken.None);
+            _userDataRepository.SaveUserData(user, item, itemData, UserDataSaveReason.Import, CancellationToken.None);
 
             return NoContent();
         }

@@ -103,7 +103,7 @@ namespace Jellyfin.Plugin.ServerSync
 
                 UserItemDataDto dto = _userDataRepository.GetUserDataDto(e.Item, user);
                 // Not set automatically
-                dto.ItemId = e.Item.Id.ToString();
+                dto.ItemId = e.Item.Id;
                 Uri uri = new Uri(_baseUri, "/internal/sync/update?userId=" + HttpUtility.UrlEncode(e.UserId.ToString()));
                 SendRequest(uri, JsonContent.Create(dto));
             }
